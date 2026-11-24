@@ -330,6 +330,61 @@
       color: #e2e8f0;
     }
 
+    .settings-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 7px;
+      color: #7dd3fc;
+      background: rgba(14, 165, 233, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 7px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .personal-efficiency-settings {
+      display: none;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 7px;
+      padding: 8px;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 10px;
+    }
+
+    .personal-efficiency-settings.show {
+      display: grid;
+    }
+
+    .personal-efficiency-field {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .personal-efficiency-field label {
+      color: #cbd5e1;
+      font-size: 0.66rem;
+      font-weight: 700;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .personal-efficiency-field input {
+      padding: 5px 4px;
+      font-size: 0.95rem;
+      text-align: center;
+    }
+
+    .personal-efficiency-unit {
+      color: var(--text-muted);
+      font-size: 0.62rem;
+      text-align: center;
+    }
+
     .form-group {
       display: flex;
       flex-direction: column;
@@ -729,6 +784,27 @@
     <div class="card">
       <div class="card-header">
         <span class="card-title">行程資訊與能耗設定</span>
+        <button class="settings-toggle" id="togglePersonalEfficiencyBtn" type="button" aria-expanded="false" aria-controls="personalEfficiencySettings">
+          個人電耗設定 <span aria-hidden="true">＋</span>
+        </button>
+      </div>
+
+      <div class="personal-efficiency-settings" id="personalEfficiencySettings">
+        <div class="personal-efficiency-field">
+          <label for="personalEffCity">一般道路</label>
+          <input type="number" id="personalEffCity" data-road-profile="city" value="6.5" min="0.1" step="0.1" inputmode="decimal">
+          <span class="personal-efficiency-unit">km/kWh</span>
+        </div>
+        <div class="personal-efficiency-field">
+          <label for="personalEffHighway">高速公路</label>
+          <input type="number" id="personalEffHighway" data-road-profile="highway" value="5.6" min="0.1" step="0.1" inputmode="decimal">
+          <span class="personal-efficiency-unit">km/kWh</span>
+        </div>
+        <div class="personal-efficiency-field">
+          <label for="personalEffMountain">山路爬升</label>
+          <input type="number" id="personalEffMountain" data-road-profile="mountain" value="4.5" min="0.1" step="0.1" inputmode="decimal">
+          <span class="personal-efficiency-unit">km/kWh</span>
+        </div>
       </div>
 
       <!-- 並排：出發時電量 + 剩餘里程 -->
@@ -771,7 +847,7 @@
             <button type="button" class="road-btn" data-road="mountain">山路爬升</button>
           </div>
           <div class="eff-input-wrap">
-            <input type="number" id="efficiency" value="6.5" min="0.1" step="0.1" inputmode="decimal">
+            <input type="number" id="efficiency" value="" min="0.1" step="0.1" inputmode="decimal">
           </div>
         </div>
       </div>
@@ -786,19 +862,19 @@
         <div class="split-grid">
           <div class="split-item" id="boxCity">
             <div class="split-label">一般道路</div>
-            <div class="split-eff-tag" id="effTagCity">6.0 km/kWh</div>
+            <div class="split-eff-tag" id="effTagCity">--</div>
             <input type="number" id="distCity" value="0" min="0" step="0.1" inputmode="decimal">
           </div>
 
           <div class="split-item is-auto" id="boxHighway">
             <div class="split-label">高速公路</div>
-            <div class="split-eff-tag" id="effTagHighway">5.6 km/kWh</div>
+            <div class="split-eff-tag" id="effTagHighway">--</div>
             <input type="number" id="distHighway" value="150" min="0" step="0.1" inputmode="decimal">
           </div>
 
           <div class="split-item" id="boxMountain">
             <div class="split-label">山路爬升</div>
-            <div class="split-eff-tag" id="effTagMountain">5.0 km/kWh</div>
+            <div class="split-eff-tag" id="effTagMountain">--</div>
             <input type="number" id="distMountain" value="0" min="0" step="0.1" inputmode="decimal">
           </div>
         </div>
@@ -964,6 +1040,11 @@
       capEditor: document.getElementById('capEditor'),
       roadBtns: document.querySelectorAll('.road-btn'),
       efficiency: document.getElementById('efficiency'),
+      personalEffCity: document.getElementById('personalEffCity'),
+      personalEffHighway: document.getElementById('personalEffHighway'),
+      personalEffMountain: document.getElementById('personalEffMountain'),
+      personalEfficiencySettings: document.getElementById('personalEfficiencySettings'),
+      togglePersonalEfficiencyBtn: document.getElementById('togglePersonalEfficiencyBtn'),
       unit: document.getElementById('unit'),
       resultCard: document.getElementById('resultCard'),
       arrivalSocLabel: document.getElementById('arrivalSocLabel'),
@@ -978,11 +1059,16 @@
       xrayBatteryLabel: document.getElementById('xrayBatteryLabel')
     };
 
-    // 依實測校準後的各路況相對於「一般道路」能耗倍率
-    const ROAD_MULTIPLIER = {
-      city: 1.00,      // 一般道路 100%
-      highway: 1.08,   // 高速公路 +8% 能耗（校準自實測數據）
-      mountain: 1.22   // 山路爬升 +22% 能耗（校準自實測數據）
+    const ROAD_TYPES = ['city', 'highway', 'mountain'];
+    const efficiencyProfiles = {
+      city: Number(els.personalEffCity.value),
+      highway: Number(els.personalEffHighway.value),
+      mountain: Number(els.personalEffMountain.value)
+    };
+    const efficiencyProfileInputs = {
+      city: els.personalEffCity,
+      highway: els.personalEffHighway,
+      mountain: els.personalEffMountain
     };
 
     const DEFAULT_BASE_CAP = 74.7;
@@ -995,10 +1081,61 @@
       }
     }
 
+    function efficiencyToKwhPerKm(value, unit) {
+      if (!Number.isFinite(value) || value <= 0) return 0;
+      if (unit === 'km_kwh') return 1 / value;
+      if (unit === 'kwh_100km') return value / 100;
+      return value / 1000;
+    }
+
+    function kwhPerKmToEfficiency(value, unit) {
+      if (!Number.isFinite(value) || value <= 0) return '';
+      if (unit === 'km_kwh') return (1 / value).toFixed(1);
+      if (unit === 'kwh_100km') return (value * 100).toFixed(1);
+      return Math.round(value * 1000);
+    }
+
+    function syncPersonalEfficiencyInputs() {
+      ROAD_TYPES.forEach(road => {
+        const value = efficiencyProfiles[road];
+        efficiencyProfileInputs[road].value =
+          Number.isFinite(value) && value > 0 ? value.toFixed(1) : '';
+      });
+    }
+
+    function updateCurrentProfileFromInput() {
+      const value = parseFloat(els.efficiency.value);
+      const kwhPerKm = efficiencyToKwhPerKm(value, els.unit.value);
+      if (kwhPerKm <= 0) return;
+      efficiencyProfiles[currentRoadType] = 1 / kwhPerKm;
+      syncPersonalEfficiencyInputs();
+    }
+
     // 依據不同輸入欄位執行對應的平衡與重算邏輯（僅在離開欄位 blur 或按下 Enter 時觸發）
     function commitFieldChange(input) {
       const oldVal = input.dataset.oldValue ?? '';
       const hasNewInput = input.value.trim() !== '';
+
+      if (input.dataset.roadProfile) {
+        const road = input.dataset.roadProfile;
+        const wasEdited = input.dataset.edited === 'true';
+        if (!wasEdited) input.value = oldVal;
+
+        input.removeAttribute('placeholder');
+        delete input.dataset.oldValue;
+        delete input.dataset.edited;
+        if (!wasEdited) return;
+
+        const value = parseFloat(input.value);
+        efficiencyProfiles[road] = Number.isFinite(value) && value > 0 ? value : null;
+        if (road === currentRoadType && efficiencyProfiles[road]) {
+          els.efficiency.value = kwhPerKmToEfficiency(1 / efficiencyProfiles[road], els.unit.value);
+        }
+        syncPersonalEfficiencyInputs();
+        calculate();
+        saveSettings();
+        return;
+      }
 
       // 若使用者離開欄位時沒有輸入任何資料，把舊值重新填入該欄位
       if (!hasNewInput) {
@@ -1019,6 +1156,8 @@
           syncFromSplit('highway');
         } else if (input.id === 'distMountain') {
           syncFromSplit('mountain');
+        } else if (input.id === 'efficiency') {
+          updateCurrentProfileFromInput();
         }
 
         // 先執行計算（含上下限正規化與容量顯示更新），再儲存設定
@@ -1029,20 +1168,30 @@
       }
     }
 
-    // 所有數字輸入欄位：
-    // 1. 進入輸入（focus）時，將舊值設為該欄位的 placeholder 並清空輸入框
-    // 2. 按下 Enter 或完成輸入離開欄位時，計算後將 focus 跳到「抵達目的地預估剩餘電量」label
+    // 一般數字欄位 focus 時清空輸入；個人電耗欄位保留並選取舊值。
+    // 按下 Enter 或完成輸入離開欄位時，計算後將 focus 跳到剩餘電量標籤。
     function bindInputLifecycle() {
       const allNumberInputs = document.querySelectorAll('input[type="number"]');
       allNumberInputs.forEach(input => {
         input.addEventListener('focus', () => {
           const oldVal = input.value;
           input.dataset.oldValue = oldVal;
+          if (input.dataset.roadProfile) {
+            input.dataset.edited = 'false';
+            input.select();
+            return;
+          }
           if (oldVal !== '') {
             input.placeholder = oldVal;
           }
           input.value = '';
         });
+
+        if (input.dataset.roadProfile) {
+          input.addEventListener('input', () => {
+            input.dataset.edited = 'true';
+          });
+        }
 
         input.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') {
@@ -1081,6 +1230,12 @@
 
     els.toggleCapBtn.addEventListener('click', () => {
       els.capEditor.classList.toggle('show');
+    });
+
+    els.togglePersonalEfficiencyBtn.addEventListener('click', () => {
+      const isExpanded = els.personalEfficiencySettings.classList.toggle('show');
+      els.togglePersonalEfficiencyBtn.setAttribute('aria-expanded', String(isExpanded));
+      els.togglePersonalEfficiencyBtn.lastElementChild.textContent = isExpanded ? '－' : '＋';
     });
 
     function setActiveRoadButton(roadType) {
@@ -1208,20 +1363,38 @@
       const savedEff = localStorage.getItem('bz4x_2026_efficiency');
       const savedUnit = localStorage.getItem('bz4x_2026_unit');
       const savedRoad = localStorage.getItem('bz4x_2026_roadType');
-      const savedDefaultsWereUnchanged =
-        (savedEff === '5.6' && savedRoad === 'highway') ||
-        (savedEff === '6.0' && savedRoad === 'city');
+      const hasSavedEfficiencyProfiles = ROAD_TYPES.some(road =>
+        localStorage.getItem(`bz4x_2026_efficiency_${road}_km_kwh`) !== null
+      );
+      currentRoadType = ROAD_TYPES.includes(savedRoad) ? savedRoad : 'city';
+
       els.batteryCap.value = savedCap && savedCap !== '72.5'
         ? savedCap
         : DEFAULT_BASE_CAP.toFixed(1);
       els.batterySoh.value = (savedSoh && savedSoh.trim() !== '') ? savedSoh : '100';
-      if (savedEff && !savedDefaultsWereUnchanged) els.efficiency.value = savedEff;
       if (savedUnit) els.unit.value = savedUnit;
-      if (savedRoad && ROAD_MULTIPLIER[savedRoad] && !savedDefaultsWereUnchanged) {
-        setActiveRoadButton(savedRoad);
-      } else {
-        setActiveRoadButton('city');
+
+      ROAD_TYPES.forEach(road => {
+        const savedProfile = localStorage.getItem(`bz4x_2026_efficiency_${road}_km_kwh`);
+        if (savedProfile !== null) {
+          const value = parseFloat(savedProfile);
+          efficiencyProfiles[road] = savedProfile.trim() !== '' && Number.isFinite(value) && value > 0
+            ? value
+            : null;
+        }
+      });
+
+      if (!hasSavedEfficiencyProfiles && savedEff && !(savedEff === '6.0' && currentRoadType === 'city')) {
+        const savedKwhPerKm = efficiencyToKwhPerKm(parseFloat(savedEff), els.unit.value);
+        if (savedKwhPerKm > 0) efficiencyProfiles[currentRoadType] = 1 / savedKwhPerKm;
       }
+
+      setActiveRoadButton(currentRoadType);
+      syncPersonalEfficiencyInputs();
+      const currentProfile = efficiencyProfiles[currentRoadType];
+      els.efficiency.value = Number.isFinite(currentProfile) && currentProfile > 0
+        ? kwhPerKmToEfficiency(1 / currentProfile, els.unit.value)
+        : (savedEff || '');
       updateCapDisplay();
     }
 
@@ -1235,6 +1408,13 @@
       if (els.efficiency.value.trim() !== '') {
         localStorage.setItem('bz4x_2026_efficiency', els.efficiency.value);
       }
+      ROAD_TYPES.forEach(road => {
+        const value = efficiencyProfiles[road];
+        localStorage.setItem(
+          `bz4x_2026_efficiency_${road}_km_kwh`,
+          Number.isFinite(value) && value > 0 ? String(value) : ''
+        );
+      });
       localStorage.setItem('bz4x_2026_unit', els.unit.value);
       localStorage.setItem('bz4x_2026_roadType', currentRoadType);
       updateCapDisplay();
@@ -1297,20 +1477,16 @@
       const rawEff = parseFloat(els.efficiency.value);
       const effInput = (!isNaN(rawEff) && rawEff > 0) ? rawEff : 0;
       const unit = els.unit.value;
-
-      let currentRoadKwhPerKm = 0;
-      if (unit === 'km_kwh') {
-        currentRoadKwhPerKm = effInput > 0 ? (1 / effInput) : 0;
-      } else if (unit === 'kwh_100km') {
-        currentRoadKwhPerKm = effInput / 100;
-      } else if (unit === 'wh_km') {
-        currentRoadKwhPerKm = effInput / 1000;
-      }
-
-      const baseCityKwhPerKm = currentRoadKwhPerKm / ROAD_MULTIPLIER[currentRoadType];
-      const cityKwhPerKm = baseCityKwhPerKm * ROAD_MULTIPLIER.city;
-      const highwayKwhPerKm = baseCityKwhPerKm * ROAD_MULTIPLIER.highway;
-      const mountainKwhPerKm = baseCityKwhPerKm * ROAD_MULTIPLIER.mountain;
+      const currentRoadKwhPerKm = efficiencyToKwhPerKm(effInput, unit);
+      const roadKwhPerKm = road => {
+        const profile = efficiencyProfiles[road];
+        return Number.isFinite(profile) && profile > 0
+          ? 1 / profile
+          : currentRoadKwhPerKm;
+      };
+      const cityKwhPerKm = roadKwhPerKm('city');
+      const highwayKwhPerKm = roadKwhPerKm('highway');
+      const mountainKwhPerKm = roadKwhPerKm('mountain');
 
       els.effTagCity.textContent = formatEffDisplay(cityKwhPerKm, unit);
       els.effTagHighway.textContent = formatEffDisplay(highwayKwhPerKm, unit);
@@ -1363,29 +1539,17 @@
       updateCarBatteryVisual(arrivalSoc, statusHex);
     }
 
-    // 點擊「目前電耗」路況選項按鈕時，自動將電耗數值換算成該路況對應數值
+    // 切換路況時載入該路況的個人電耗設定
     els.roadBtns.forEach(btn => {
       btn.addEventListener('click', () => {
         const newRoad = btn.dataset.road;
         if (newRoad === currentRoadType) return;
 
-        const val = parseFloat(els.efficiency.value);
-        const unit = els.unit.value;
-        if (val > 0) {
-          let prevKwhPerKm = 0;
-          if (unit === 'km_kwh') prevKwhPerKm = 1 / val;
-          else if (unit === 'kwh_100km') prevKwhPerKm = val / 100;
-          else if (unit === 'wh_km') prevKwhPerKm = val / 1000;
-
-          const baseCityKwhPerKm = prevKwhPerKm / ROAD_MULTIPLIER[currentRoadType];
-          const newKwhPerKm = baseCityKwhPerKm * ROAD_MULTIPLIER[newRoad];
-
-          if (unit === 'km_kwh') els.efficiency.value = (1 / newKwhPerKm).toFixed(1);
-          else if (unit === 'kwh_100km') els.efficiency.value = (newKwhPerKm * 100).toFixed(1);
-          else if (unit === 'wh_km') els.efficiency.value = Math.round(newKwhPerKm * 1000);
-        }
-
         setActiveRoadButton(newRoad);
+        const profile = efficiencyProfiles[newRoad];
+        if (Number.isFinite(profile) && profile > 0) {
+          els.efficiency.value = kwhPerKmToEfficiency(1 / profile, els.unit.value);
+        }
         saveSettings();
         calculate();
         focusArrivalSocLabel();
@@ -1398,14 +1562,8 @@
       const val = parseFloat(els.efficiency.value);
       const newUnit = els.unit.value;
       if (val > 0) {
-        let kwhPerKm = 0;
-        if (prevUnit === 'km_kwh') kwhPerKm = 1 / val;
-        else if (prevUnit === 'kwh_100km') kwhPerKm = val / 100;
-        else if (prevUnit === 'wh_km') kwhPerKm = val / 1000;
-
-        if (newUnit === 'km_kwh') els.efficiency.value = (1 / kwhPerKm).toFixed(1);
-        else if (newUnit === 'kwh_100km') els.efficiency.value = (kwhPerKm * 100).toFixed(1);
-        else if (newUnit === 'wh_km') els.efficiency.value = Math.round(kwhPerKm * 1000);
+        const kwhPerKm = efficiencyToKwhPerKm(val, prevUnit);
+        els.efficiency.value = kwhPerKmToEfficiency(kwhPerKm, newUnit);
       }
       prevUnit = newUnit;
       saveSettings();
@@ -1428,7 +1586,7 @@
       window.navigator.standalone === true;
 
     function setInstallButtonVisible(visible) {
-      const shouldShow = visible && isMobileDevice && !isInstalled();
+      const shouldShow = visible && isMobileDevice && !isIOSDevice && !isInstalled();
       installBtn.classList.toggle('is-visible', shouldShow);
       installBtn.parentElement.classList.toggle('has-install-button', shouldShow);
     }
@@ -1445,8 +1603,6 @@
       setInstallButtonVisible(true);
     });
 
-    if (isIOSDevice && !isInstalled()) setInstallButtonVisible(true);
-
     installBtn.addEventListener('click', async () => {
       if (isInstalled()) {
         setInstallButtonVisible(false);
@@ -1457,8 +1613,6 @@
         await installPromptEvent.userChoice;
         installPromptEvent = null;
         setInstallButtonVisible(false);
-      } else if (isIOSDevice) {
-        window.alert('請點擊瀏覽器的分享按鈕，選擇「加入主畫面」來安裝應用程式。');
       }
     });
 
