@@ -59,6 +59,10 @@
       gap: 8px;
     }
 
+    .container.has-install-button {
+      padding-bottom: 50px;
+    }
+
     /* 精簡標題列 */
     header {
       display: flex;
@@ -120,20 +124,28 @@
 
     .install-btn {
       display: none;
-      width: 30px;
-      height: 30px;
+      position: fixed;
+      left: 50%;
+      bottom: max(10px, calc(env(safe-area-inset-bottom) + 8px));
+      z-index: 10;
+      min-height: 38px;
       align-items: center;
       justify-content: center;
-      padding: 0;
-      color: #7dd3fc;
-      background: rgba(14, 165, 233, 0.12);
-      border: 1px solid rgba(56, 189, 248, 0.32);
-      border-radius: 8px;
+      gap: 8px;
+      padding: 0 14px;
+      transform: translateX(-50%);
+      color: #e0f2fe;
+      background: linear-gradient(135deg, #0284c7, #0369a1);
+      border: 1px solid rgba(125, 211, 252, 0.42);
+      border-radius: 999px;
       cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 700;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
     }
 
     .install-btn.is-visible {
-      display: inline-flex;
+      display: flex;
     }
 
     .install-btn svg {
@@ -670,11 +682,6 @@
         <h1>抵達電量預估</h1>
       </div>
       <div class="header-controls">
-        <button class="install-btn" id="installBtn" type="button" aria-label="安裝應用程式" title="安裝應用程式">
-          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M12 3v11m0 0 4-4m-4 4-4-4M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
         <label class="soh-tag" title="輸入電池健康度 (SOH %)">
           <span>健康度</span>
           <input type="number" id="batterySoh" value="100" min="50" max="100" step="0.5" inputmode="decimal">
@@ -690,7 +697,7 @@
     <div class="cap-editor" id="capEditor">
       <span>新車(100% SOH)可用基準 (總74.7)：</span>
       <div style="display:flex;align-items:center;gap:4px;">
-        <input type="number" id="batteryCap" value="72.5" min="10" max="150" step="0.1" inputmode="decimal">
+        <input type="number" id="batteryCap" value="74.7" min="10" max="150" step="0.1" inputmode="decimal">
         <span>kWh</span>
       </div>
     </div>
@@ -731,7 +738,7 @@
             <span>出發時電量 (SOC)</span>
           </div>
           <div class="input-with-suffix">
-            <input type="number" id="startSoc" value="85" min="1" max="100" step="1" inputmode="numeric">
+            <input type="number" id="startSoc" value="80" min="1" max="100" step="1" inputmode="numeric">
             <span class="suffix-text">%</span>
           </div>
         </div>
@@ -759,12 +766,12 @@
         </div>
         <div class="eff-control-row">
           <div class="road-btn-group" id="roadBtnGroup">
-            <button type="button" class="road-btn" data-road="city">一般道路</button>
-            <button type="button" class="road-btn active" data-road="highway">高速公路</button>
+            <button type="button" class="road-btn active" data-road="city">一般道路</button>
+            <button type="button" class="road-btn" data-road="highway">高速公路</button>
             <button type="button" class="road-btn" data-road="mountain">山路爬升</button>
           </div>
           <div class="eff-input-wrap">
-            <input type="number" id="efficiency" value="5.6" min="0.1" step="0.1" inputmode="decimal">
+            <input type="number" id="efficiency" value="6.5" min="0.1" step="0.1" inputmode="decimal">
           </div>
         </div>
       </div>
@@ -904,7 +911,7 @@
 
           <!-- 電池組容量與抵達剩餘標示 -->
           <text x="228" y="78" font-size="8" fill="#bae6fd" text-anchor="middle" font-weight="700" letter-spacing="0.4">
-            實際可用 <tspan id="svgEffectiveCap">72.5</tspan> kWh · 抵達剩餘 <tspan id="svgSocText" fill="#10b981">50%</tspan>
+            實際可用 <tspan id="svgEffectiveCap">74.7</tspan> kWh · 抵達剩餘 <tspan id="svgSocText" fill="#10b981">50%</tspan>
           </text>
 
           <!-- 旋轉中的前輪與後輪 -->
@@ -929,6 +936,12 @@
         </svg>
       </div>
     </div>
+    <button class="install-btn" id="installBtn" type="button">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 3v11m0 0 4-4m-4 4-4-4M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      安裝應用程式
+    </button>
   </div>
 
   <script>
@@ -972,8 +985,8 @@
       mountain: 1.22   // 山路爬升 +22% 能耗（校準自實測數據）
     };
 
-    const DEFAULT_BASE_CAP = 72.5;
-    let currentRoadType = 'highway';
+    const DEFAULT_BASE_CAP = 74.7;
+    let currentRoadType = 'city';
 
     // 將 focus 跳到「抵達目的地預估剩餘電量」標籤（收起虛擬鍵盤並聚焦結果區）
     function focusArrivalSocLabel() {
@@ -1195,14 +1208,19 @@
       const savedEff = localStorage.getItem('bz4x_2026_efficiency');
       const savedUnit = localStorage.getItem('bz4x_2026_unit');
       const savedRoad = localStorage.getItem('bz4x_2026_roadType');
-      els.batteryCap.value = savedCap || DEFAULT_BASE_CAP.toFixed(1);
+      const savedDefaultsWereUnchanged =
+        (savedEff === '5.6' && savedRoad === 'highway') ||
+        (savedEff === '6.0' && savedRoad === 'city');
+      els.batteryCap.value = savedCap && savedCap !== '72.5'
+        ? savedCap
+        : DEFAULT_BASE_CAP.toFixed(1);
       els.batterySoh.value = (savedSoh && savedSoh.trim() !== '') ? savedSoh : '100';
-      if (savedEff) els.efficiency.value = savedEff;
+      if (savedEff && !savedDefaultsWereUnchanged) els.efficiency.value = savedEff;
       if (savedUnit) els.unit.value = savedUnit;
-      if (savedRoad && ROAD_MULTIPLIER[savedRoad]) {
+      if (savedRoad && ROAD_MULTIPLIER[savedRoad] && !savedDefaultsWereUnchanged) {
         setActiveRoadButton(savedRoad);
       } else {
-        setActiveRoadButton('highway');
+        setActiveRoadButton('city');
       }
       updateCapDisplay();
     }
@@ -1402,8 +1420,18 @@
 
     let installPromptEvent;
     const installBtn = document.getElementById('installBtn');
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+    const userAgent = navigator.userAgent;
+    const isIOSDevice = /iPhone|iPad|iPod/i.test(userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isMobileDevice = isIOSDevice || /Android|Mobile|IEMobile|Windows Phone/i.test(userAgent);
+    const isInstalled = () => window.matchMedia('(display-mode: standalone)').matches ||
       window.navigator.standalone === true;
+
+    function setInstallButtonVisible(visible) {
+      const shouldShow = visible && isMobileDevice && !isInstalled();
+      installBtn.classList.toggle('is-visible', shouldShow);
+      installBtn.parentElement.classList.toggle('has-install-button', shouldShow);
+    }
 
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js').catch(error => {
@@ -1414,20 +1442,29 @@
     window.addEventListener('beforeinstallprompt', event => {
       event.preventDefault();
       installPromptEvent = event;
-      if (!isStandalone) installBtn.classList.add('is-visible');
+      setInstallButtonVisible(true);
     });
 
+    if (isIOSDevice && !isInstalled()) setInstallButtonVisible(true);
+
     installBtn.addEventListener('click', async () => {
-      if (!installPromptEvent) return;
-      installPromptEvent.prompt();
-      await installPromptEvent.userChoice;
-      installPromptEvent = null;
-      installBtn.classList.remove('is-visible');
+      if (isInstalled()) {
+        setInstallButtonVisible(false);
+        return;
+      }
+      if (installPromptEvent) {
+        installPromptEvent.prompt();
+        await installPromptEvent.userChoice;
+        installPromptEvent = null;
+        setInstallButtonVisible(false);
+      } else if (isIOSDevice) {
+        window.alert('請點擊瀏覽器的分享按鈕，選擇「加入主畫面」來安裝應用程式。');
+      }
     });
 
     window.addEventListener('appinstalled', () => {
       installPromptEvent = null;
-      installBtn.classList.remove('is-visible');
+      setInstallButtonVisible(false);
     });
   </script>
 </body>
