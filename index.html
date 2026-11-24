@@ -5,7 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-title" content="bZ4X 電量預估">
+  <meta name="theme-color" content="#0b1120">
+  <meta name="description" content="預估 Toyota bZ4X 行程抵達電量與續航，支援不同路況與電池健康度設定。">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./icons/icon-180.png">
   <title>2026 Toyota bZ4X 電量預估計算器</title>
   <style>
     :root {
@@ -31,19 +36,22 @@
     html, body {
       height: 100dvh;
       overflow: hidden;
-      background-color: var(--bg);
+      background-color: #0b1120;
       color: var(--text);
     }
 
     body {
       display: flex;
       justify-content: center;
-      padding: 8px 12px;
+      padding: max(8px, env(safe-area-inset-top)) 12px max(8px, env(safe-area-inset-bottom));
+      background:
+        radial-gradient(ellipse at 50% -18%, rgba(14, 165, 233, 0.16), transparent 54%),
+        var(--bg);
     }
 
     .container {
       width: 100%;
-      max-width: 480px;
+      max-width: 500px;
       height: 100%;
       display: flex;
       flex-direction: column;
@@ -56,7 +64,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 2px 2px;
+      padding: 5px 3px 7px;
       flex-shrink: 0;
       gap: 6px;
     }
@@ -64,8 +72,26 @@
     .title-wrap {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
       min-width: 0;
+    }
+
+    .brand-mark {
+      display: grid;
+      width: 32px;
+      height: 32px;
+      place-items: center;
+      flex: 0 0 auto;
+      color: #7dd3fc;
+      background: linear-gradient(145deg, rgba(14, 165, 233, 0.22), rgba(14, 165, 233, 0.08));
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 10px;
+      box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
+    }
+
+    .brand-mark svg {
+      width: 20px;
+      height: 20px;
     }
 
     .badge {
@@ -90,6 +116,29 @@
       align-items: center;
       gap: 5px;
       flex-shrink: 0;
+    }
+
+    .install-btn {
+      display: none;
+      width: 30px;
+      height: 30px;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      color: #7dd3fc;
+      background: rgba(14, 165, 233, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.32);
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .install-btn.is-visible {
+      display: inline-flex;
+    }
+
+    .install-btn svg {
+      width: 16px;
+      height: 16px;
     }
 
     .soh-tag {
@@ -594,6 +643,15 @@
       font-size: 0.92rem;
       text-align: right;
     }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -601,10 +659,22 @@
     <!-- 頂部標題列：含電池健康度(SOH)輸入框與可用電量 -->
     <header>
       <div class="title-wrap">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <rect x="3.5" y="6" width="16" height="12" rx="3" stroke="currentColor" stroke-width="1.8"/>
+            <path d="M21 10v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="m12.8 7.8-4 4.7h3l-.7 3.7 4.1-5h-3.1l.7-3.4Z" fill="currentColor"/>
+          </svg>
+        </span>
         <span class="badge">2026 bZ4X</span>
         <h1>抵達電量預估</h1>
       </div>
       <div class="header-controls">
+        <button class="install-btn" id="installBtn" type="button" aria-label="安裝應用程式" title="安裝應用程式">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 3v11m0 0 4-4m-4 4-4-4M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
         <label class="soh-tag" title="輸入電池健康度 (SOH %)">
           <span>健康度</span>
           <input type="number" id="batterySoh" value="100" min="50" max="100" step="0.5" inputmode="decimal">
@@ -1329,6 +1399,36 @@
     loadSettings();
     prevUnit = els.unit.value;
     calculate();
+
+    let installPromptEvent;
+    const installBtn = document.getElementById('installBtn');
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true;
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(error => {
+        console.error('無法啟用離線支援：', error);
+      });
+    }
+
+    window.addEventListener('beforeinstallprompt', event => {
+      event.preventDefault();
+      installPromptEvent = event;
+      if (!isStandalone) installBtn.classList.add('is-visible');
+    });
+
+    installBtn.addEventListener('click', async () => {
+      if (!installPromptEvent) return;
+      installPromptEvent.prompt();
+      await installPromptEvent.userChoice;
+      installPromptEvent = null;
+      installBtn.classList.remove('is-visible');
+    });
+
+    window.addEventListener('appinstalled', () => {
+      installPromptEvent = null;
+      installBtn.classList.remove('is-visible');
+    });
   </script>
 </body>
 </html>
