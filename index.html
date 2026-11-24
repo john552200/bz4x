@@ -1,0 +1,1334 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0f172a">
+  <title>2026 Toyota bZ4X 電量預估計算器</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --card-light: #334155;
+      --primary: #0ea5e9;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      height: 100dvh;
+      overflow: hidden;
+      background-color: var(--bg);
+      color: var(--text);
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      padding: 8px 12px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 480px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      gap: 8px;
+    }
+
+    /* 精簡標題列 */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 2px 2px;
+      flex-shrink: 0;
+      gap: 6px;
+    }
+
+    .title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .badge {
+      background: rgba(14, 165, 233, 0.18);
+      color: var(--primary);
+      border: 1px solid rgba(14, 165, 233, 0.35);
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 6px;
+      flex-shrink: 0;
+    }
+
+    header h1 {
+      font-size: 0.96rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex-shrink: 0;
+    }
+
+    .soh-tag {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      background: var(--card);
+      padding: 2px 6px;
+      border-radius: 6px;
+      border: 1px solid #334155;
+    }
+
+    .soh-tag input[type="number"] {
+      width: 34px;
+      background: transparent;
+      border: none;
+      border-bottom: 1px dashed rgba(56, 189, 248, 0.5);
+      border-radius: 0;
+      color: #38bdf8;
+      font-size: 0.76rem;
+      font-weight: 700;
+      padding: 0 1px;
+      text-align: right;
+      -moz-appearance: textfield;
+    }
+
+    .soh-tag input[type="number"]::placeholder {
+      color: rgba(56, 189, 248, 0.45);
+      font-weight: 700;
+    }
+
+    .soh-tag input[type="number"]::-webkit-outer-spin-button,
+    .soh-tag input[type="number"]::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    .soh-tag input[type="number"]:focus {
+      border-bottom-color: #38bdf8;
+    }
+
+    .soh-unit {
+      color: #38bdf8;
+      font-size: 0.7rem;
+      font-weight: 700;
+    }
+
+    .cap-tag {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      background: var(--card);
+      padding: 3px 7px;
+      border-radius: 6px;
+      border: 1px solid #334155;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    /* 結果顯示卡片 */
+    .result-card {
+      background: linear-gradient(145deg, #1e293b, #0f172a);
+      border: 1px solid #334155;
+      border-radius: 15px;
+      padding: 9px 13px;
+      text-align: center;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+      flex-shrink: 0;
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .result-card:focus {
+      border-color: rgba(56, 189, 248, 0.65);
+      box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.2), 0 6px 18px rgba(0, 0, 0, 0.35);
+    }
+
+    .result-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+
+    .result-label {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      outline: none;
+      border-radius: 4px;
+      padding: 1px 3px;
+      transition: color 0.2s ease, background-color 0.2s ease;
+    }
+
+    .result-label:focus {
+      color: #38bdf8;
+      background-color: rgba(14, 165, 233, 0.12);
+    }
+
+    .result-soc {
+      font-size: 2.15rem;
+      font-weight: 800;
+      line-height: 1;
+      transition: color 0.2s ease;
+    }
+
+    .battery-bar-bg {
+      width: 100%;
+      height: 7px;
+      background-color: #0f172a;
+      border-radius: 999px;
+      margin: 5px 0 4px;
+      overflow: hidden;
+      border: 1px solid #334155;
+    }
+
+    .battery-bar-fill {
+      height: 100%;
+      width: 50%;
+      background-color: var(--success);
+      border-radius: 999px;
+      transition: width 0.2s ease, background-color 0.2s ease;
+    }
+
+    .status-msg {
+      font-size: 0.74rem;
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+
+    .result-details {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      padding-top: 5px;
+      border-top: 1px solid #334155;
+    }
+
+    .detail-box {
+      background: rgba(15, 23, 42, 0.65);
+      padding: 4px 8px;
+      border-radius: 8px;
+    }
+
+    .detail-title {
+      font-size: 0.66rem;
+      color: var(--text-muted);
+    }
+
+    .detail-value {
+      font-size: 0.88rem;
+      font-weight: 700;
+      margin-top: 1px;
+    }
+
+    /* 整合式行程與電耗卡片 */
+    .card {
+      background-color: var(--card);
+      border-radius: 15px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      gap: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      flex-shrink: 0;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .card-title {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #e2e8f0;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.76rem;
+      color: #cbd5e1;
+    }
+
+    /* 上排雙欄：出發電量 + 剩餘里程 */
+    .top-two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .input-with-suffix {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .input-with-suffix input {
+      padding-right: 28px;
+    }
+
+    .suffix-text {
+      position: absolute;
+      right: 9px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    /* 目前電耗：選項按鈕組 + 數值輸入框並排 */
+    .eff-control-row {
+      display: flex;
+      align-items: stretch;
+      gap: 6px;
+    }
+
+    .road-btn-group {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+      flex: 1.45;
+      background-color: #0f172a;
+      padding: 3px;
+      border-radius: 9px;
+      border: 1px solid #334155;
+    }
+
+    .road-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      border-radius: 6px;
+      font-size: 0.74rem;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 4px 2px;
+      transition: all 0.15s ease;
+    }
+
+    .road-btn.active {
+      background-color: rgba(14, 165, 233, 0.2);
+      border-color: rgba(14, 165, 233, 0.55);
+      color: #38bdf8;
+      box-shadow: 0 0 8px rgba(14, 165, 233, 0.2);
+    }
+
+    .eff-input-wrap {
+      flex: 1;
+      display: flex;
+    }
+
+    /* 加大使用者輸入的數字尺寸 */
+    input[type="number"] {
+      width: 100%;
+      background-color: #0f172a;
+      border: 1px solid #334155;
+      color: var(--text);
+      padding: 6px 8px;
+      border-radius: 9px;
+      font-size: 1.24rem;
+      font-weight: 700;
+      outline: none;
+    }
+
+    input[type="number"]::placeholder {
+      color: var(--text-muted);
+      opacity: 0.5;
+      font-weight: 700;
+    }
+
+    select {
+      background-color: #0f172a;
+      border: 1px solid #334155;
+      color: var(--text);
+      padding: 1px 5px;
+      border-radius: 5px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      width: auto;
+      flex-shrink: 0;
+      outline: none;
+    }
+
+    input[type="number"]:focus, select:focus {
+      border-color: var(--primary);
+    }
+
+    /* 各路況里程區塊 */
+    .route-split-box {
+      background-color: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 11px;
+      padding: 7px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .route-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.74rem;
+      color: var(--text-muted);
+    }
+
+    .split-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+
+    .split-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      background-color: var(--card);
+      padding: 4px 5px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+    }
+
+    .split-item.is-auto {
+      border-color: rgba(14, 165, 233, 0.55);
+    }
+
+    .split-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: #e2e8f0;
+      line-height: 1.2;
+      text-align: center;
+    }
+
+    .split-eff-tag {
+      font-size: 0.62rem;
+      font-weight: 600;
+      color: var(--primary);
+      background: rgba(14, 165, 233, 0.12);
+      border-radius: 4px;
+      padding: 1px 2px;
+      text-align: center;
+    }
+
+    .split-item input {
+      padding: 3px 4px;
+      font-size: 1.18rem;
+      font-weight: 700;
+      text-align: center;
+      border-radius: 7px;
+    }
+
+    .split-item.is-auto input {
+      color: var(--primary);
+    }
+
+    .split-item.is-auto input::placeholder {
+      color: var(--primary);
+      opacity: 0.45;
+    }
+
+    /* 底部透視 2026 bZ4X 汽車與電池組視覺化區塊 */
+    .xray-car-card {
+      flex: 1;
+      min-height: 0;
+      background: radial-gradient(ellipse at center, #162238 0%, #0b1120 100%);
+      border: 1px solid #26354d;
+      border-radius: 15px;
+      padding: 6px 10px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .xray-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      z-index: 2;
+    }
+
+    .xray-title {
+      color: #7dd3fc;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .xray-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background-color: #38bdf8;
+      box-shadow: 0 0 6px #38bdf8;
+      animation: pulseDot 1.6s infinite ease-in-out;
+    }
+
+    .xray-svg-wrap {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+    }
+
+    .xray-svg-wrap svg {
+      width: 100%;
+      height: 100%;
+      max-height: 118px;
+    }
+
+    /* SVG 透視電池組與動力流動畫 */
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+    }
+
+    @keyframes energyFlow {
+      to { stroke-dashoffset: -24; }
+    }
+
+    @keyframes roadScroll {
+      to { stroke-dashoffset: -20; }
+    }
+
+    @keyframes wheelSpin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(-360deg); }
+    }
+
+    @keyframes batteryBreathe {
+      0%, 100% { opacity: 0.92; }
+      50% { opacity: 0.62; }
+    }
+
+    @keyframes scanSweep {
+      0% { transform: translateX(-195px); opacity: 0; }
+      15% { opacity: 0.85; }
+      85% { opacity: 0.85; }
+      100% { transform: translateX(195px); opacity: 0; }
+    }
+
+    .hv-cable-flow {
+      stroke-dasharray: 5 3;
+      animation: energyFlow 0.9s linear infinite;
+    }
+
+    .road-dash-flow {
+      animation: roadScroll 0.85s linear infinite;
+    }
+
+    .wheel-rotator {
+      animation: wheelSpin 2.6s linear infinite;
+    }
+
+    .cell-active-pulse {
+      animation: batteryBreathe 2s ease-in-out infinite;
+    }
+
+    .battery-scan-beam {
+      animation: scanSweep 3.2s ease-in-out infinite;
+    }
+
+    /* 可用容量微調小抽屜 */
+    .cap-editor {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      background: #0f172a;
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      font-size: 0.74rem;
+      flex-shrink: 0;
+    }
+
+    .cap-editor.show {
+      display: flex;
+    }
+
+    .cap-editor input {
+      width: 74px;
+      padding: 4px 6px;
+      font-size: 0.92rem;
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- 頂部標題列：含電池健康度(SOH)輸入框與可用電量 -->
+    <header>
+      <div class="title-wrap">
+        <span class="badge">2026 bZ4X</span>
+        <h1>抵達電量預估</h1>
+      </div>
+      <div class="header-controls">
+        <label class="soh-tag" title="輸入電池健康度 (SOH %)">
+          <span>健康度</span>
+          <input type="number" id="batterySoh" value="100" min="50" max="100" step="0.5" inputmode="decimal">
+          <span class="soh-unit">%</span>
+        </label>
+        <div class="cap-tag" id="toggleCapBtn" title="點擊微調100%健康度基準可用容量">
+          可用 <span id="capDisplay">72.5</span> kWh ✎
+        </div>
+      </div>
+    </header>
+
+    <!-- 隱藏式可用電量微調列 -->
+    <div class="cap-editor" id="capEditor">
+      <span>新車(100% SOH)可用基準 (總74.7)：</span>
+      <div style="display:flex;align-items:center;gap:4px;">
+        <input type="number" id="batteryCap" value="72.5" min="10" max="150" step="0.1" inputmode="decimal">
+        <span>kWh</span>
+      </div>
+    </div>
+
+    <!-- 預估結果卡片（設定 tabindex="-1" 使每個欄位輸入完後可將 focus 跳到此區域/剩餘電量標籤） -->
+    <div class="result-card" id="resultCard" tabindex="-1">
+      <div class="result-top">
+        <span class="result-label" id="arrivalSocLabel" tabindex="-1">抵達目的地預估剩餘電量</span>
+        <span class="result-soc" id="arrivalSoc">--%</span>
+      </div>
+      <div class="battery-bar-bg">
+        <div class="battery-bar-fill" id="batteryBar"></div>
+      </div>
+      <div class="status-msg" id="statusMsg">請輸入剩餘里程</div>
+
+      <div class="result-details">
+        <div class="detail-box">
+          <div class="detail-title">預估總消耗電量</div>
+          <div class="detail-value" id="usedEnergy">-- kWh</div>
+        </div>
+        <div class="detail-box">
+          <div class="detail-title">抵達後剩餘續航</div>
+          <div class="detail-value" id="remainingRange">-- km</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 整合式行程資訊區塊 -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">行程資訊與能耗設定</span>
+      </div>
+
+      <!-- 並排：出發時電量 + 剩餘里程 -->
+      <div class="top-two-col">
+        <div class="form-group">
+          <div class="label-row">
+            <span>出發時電量 (SOC)</span>
+          </div>
+          <div class="input-with-suffix">
+            <input type="number" id="startSoc" value="85" min="1" max="100" step="1" inputmode="numeric">
+            <span class="suffix-text">%</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <div class="label-row">
+            <span>剩餘里程 (km)</span>
+          </div>
+          <div class="input-with-suffix">
+            <input type="number" id="totalDistance" value="150" min="0" step="0.1" inputmode="decimal">
+            <span class="suffix-text">km</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 目前電耗：選項按鈕（一般道路 / 高速公路 / 山路爬升） + 輸入框 -->
+      <div class="form-group">
+        <div class="label-row">
+          <span>目前電耗</span>
+          <select id="unit">
+            <option value="km_kwh" selected>km/kWh</option>
+            <option value="kwh_100km">kWh/100km</option>
+            <option value="wh_km">Wh/km</option>
+          </select>
+        </div>
+        <div class="eff-control-row">
+          <div class="road-btn-group" id="roadBtnGroup">
+            <button type="button" class="road-btn" data-road="city">一般道路</button>
+            <button type="button" class="road-btn active" data-road="highway">高速公路</button>
+            <button type="button" class="road-btn" data-road="mountain">山路爬升</button>
+          </div>
+          <div class="eff-input-wrap">
+            <input type="number" id="efficiency" value="5.6" min="0.1" step="0.1" inputmode="decimal">
+          </div>
+        </div>
+      </div>
+
+      <!-- 各路況里程 -->
+      <div class="route-split-box">
+        <div class="route-header">
+          <span>各路況里程</span>
+          <span style="font-size:0.68rem;">預設帶入高速公路</span>
+        </div>
+
+        <div class="split-grid">
+          <div class="split-item" id="boxCity">
+            <div class="split-label">一般道路</div>
+            <div class="split-eff-tag" id="effTagCity">6.0 km/kWh</div>
+            <input type="number" id="distCity" value="0" min="0" step="0.1" inputmode="decimal">
+          </div>
+
+          <div class="split-item is-auto" id="boxHighway">
+            <div class="split-label">高速公路</div>
+            <div class="split-eff-tag" id="effTagHighway">5.6 km/kWh</div>
+            <input type="number" id="distHighway" value="150" min="0" step="0.1" inputmode="decimal">
+          </div>
+
+          <div class="split-item" id="boxMountain">
+            <div class="split-label">山路爬升</div>
+            <div class="split-eff-tag" id="effTagMountain">5.0 km/kWh</div>
+            <input type="number" id="distMountain" value="0" min="0" step="0.1" inputmode="decimal">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 底部透視 2026 Toyota bZ4X 與底盤電池組視覺化（含動態效果） -->
+    <div class="xray-car-card">
+      <div class="xray-header">
+        <span class="xray-title"><span class="xray-dot"></span>2026 bZ4X e-TNGA 底盤電池透視</span>
+        <span id="xrayBatteryLabel" style="font-weight:700;color:#10b981;">抵達預估電量</span>
+      </div>
+      <div class="xray-svg-wrap">
+        <svg viewBox="0 0 460 135" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="bodyGlass" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.18"/>
+              <stop offset="65%" stop-color="#0ea5e9" stop-opacity="0.06"/>
+              <stop offset="100%" stop-color="#0284c7" stop-opacity="0.22"/>
+            </linearGradient>
+            <linearGradient id="windowGlass" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#7dd3fc" stop-opacity="0.22"/>
+              <stop offset="50%" stop-color="#bae6fd" stop-opacity="0.10"/>
+              <stop offset="100%" stop-color="#7dd3fc" stop-opacity="0.20"/>
+            </linearGradient>
+            <linearGradient id="scanGrad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#ffffff" stop-opacity="0"/>
+              <stop offset="50%" stop-color="#e0f2fe" stop-opacity="0.55"/>
+              <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+            </linearGradient>
+            <clipPath id="batteryClip">
+              <rect x="139" y="84" width="178" height="15" rx="3"/>
+            </clipPath>
+            <filter id="batteryGlow" x="-15%" y="-30%" width="130%" height="160%">
+              <feGaussianBlur stdDeviation="3" result="blur"/>
+              <feMerge>
+                <feMergeNode in="blur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+            <radialGradient id="wheelGrad" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#334155"/>
+              <stop offset="65%" stop-color="#0f172a"/>
+              <stop offset="100%" stop-color="#475569"/>
+            </radialGradient>
+          </defs>
+
+          <!-- 動態行駛路面標線 -->
+          <line x1="22" y1="122" x2="438" y2="122" stroke="#1e293b" stroke-width="2" stroke-linecap="round"/>
+          <line class="road-dash-flow" x1="45" y1="122" x2="415" y2="122" stroke="#38bdf8" stroke-opacity="0.35" stroke-width="1.6" stroke-dasharray="10 10"/>
+
+          <!-- 2026 bZ4X 雙髻鯊(Hammerhead) SUV 透視車身外輪廓 -->
+          <path d="M 38 98
+                   L 35 84
+                   Q 34 73 46 68
+                   L 78 62
+                   L 132 54
+                   L 185 24
+                   Q 202 18 232 18
+                   L 322 20
+                   Q 348 22 368 42
+                   L 408 58
+                   Q 424 63 426 76
+                   L 424 96
+                   Q 418 102 406 102
+                   L 388 102
+                   A 31 31 0 0 0 326 102
+                   L 136 102
+                   A 31 31 0 0 0 74 102
+                   L 48 102
+                   Q 40 102 38 98 Z"
+                fill="url(#bodyGlass)" stroke="#38bdf8" stroke-width="1.6" stroke-opacity="0.75"/>
+
+          <!-- 車頂行李架與尾翼線條 -->
+          <path d="M 192 18 L 320 19 L 336 24" fill="none" stroke="#7dd3fc" stroke-width="1.4" stroke-opacity="0.7"/>
+          <path d="M 358 34 L 376 32 L 372 43" fill="none" stroke="#38bdf8" stroke-width="1.3" stroke-opacity="0.8"/>
+
+          <!-- 透視座艙玻璃窗 -->
+          <path d="M 144 53 L 190 25 Q 204 22 230 22 L 315 24 Q 336 26 354 44 L 332 53 Z"
+                fill="url(#windowGlass)" stroke="#7dd3fc" stroke-width="1" stroke-opacity="0.5"/>
+          <line x1="242" y1="22" x2="240" y2="53" stroke="#38bdf8" stroke-width="1.5" stroke-opacity="0.45"/>
+          <line x1="312" y1="24" x2="316" y2="53" stroke="#38bdf8" stroke-width="1.5" stroke-opacity="0.45"/>
+
+          <!-- 內部透視：前後雙電動馬達與流動的高壓橘色線束 -->
+          <rect x="88" y="75" width="28" height="16" rx="4" fill="#1e293b" stroke="#64748b" stroke-width="1.2"/>
+          <text x="102" y="85" font-size="6.5" fill="#94a3b8" text-anchor="middle" font-weight="700">eAxle</text>
+          <rect x="342" y="76" width="24" height="15" rx="4" fill="#1e293b" stroke="#64748b" stroke-width="1.2"/>
+
+          <!-- 動態電流流動的高壓線束 -->
+          <path d="M 138 92 L 116 83" stroke="#f97316" stroke-width="2" stroke-opacity="0.3"/>
+          <path class="hv-cable-flow" d="M 138 92 L 116 83" stroke="#fb923c" stroke-width="2" stroke-linecap="round"/>
+          <path d="M 318 92 L 342 83" stroke="#f97316" stroke-width="2" stroke-opacity="0.3"/>
+          <path class="hv-cable-flow" d="M 318 92 L 342 83" stroke="#fb923c" stroke-width="2" stroke-linecap="round"/>
+
+          <!-- 頭燈與貫穿式尾燈科技光條 -->
+          <path d="M 41 72 L 66 67 L 58 75 Z" fill="#e0f2fe" opacity="0.9"/>
+          <path d="M 412 60 L 424 67 L 410 68 Z" fill="#ef4444" opacity="0.9"/>
+
+          <!-- 核心亮點：底盤 74.7 kWh 高壓鋰電池組外框 -->
+          <g filter="url(#batteryGlow)">
+            <rect x="138" y="83" width="180" height="17" rx="4" fill="#091322" stroke="#38bdf8" stroke-width="1.4"/>
+            <rect x="318" y="87" width="4" height="9" rx="1.5" fill="#38bdf8"/>
+          </g>
+
+          <!-- 動態電量填充群組 + 掃描光束（裁切於電池框內） -->
+          <g clip-path="url(#batteryClip)">
+            <g id="batteryCellsGroup"></g>
+            <rect class="battery-scan-beam" x="210" y="83" width="36" height="17" fill="url(#scanGrad)"/>
+          </g>
+
+          <!-- 電池組容量與抵達剩餘標示 -->
+          <text x="228" y="78" font-size="8" fill="#bae6fd" text-anchor="middle" font-weight="700" letter-spacing="0.4">
+            實際可用 <tspan id="svgEffectiveCap">72.5</tspan> kWh · 抵達剩餘 <tspan id="svgSocText" fill="#10b981">50%</tspan>
+          </text>
+
+          <!-- 旋轉中的前輪與後輪 -->
+          <g transform="translate(105, 102)">
+            <circle r="20" fill="url(#wheelGrad)" stroke="#64748b" stroke-width="2"/>
+            <g class="wheel-rotator">
+              <circle r="13" fill="none" stroke="#94a3b8" stroke-width="1.3" stroke-dasharray="5 3.1"/>
+              <line x1="-13" y1="0" x2="13" y2="0" stroke="#64748b" stroke-width="1"/>
+              <line x1="0" y1="-13" x2="0" y2="13" stroke="#64748b" stroke-width="1"/>
+            </g>
+            <circle r="4.5" fill="#38bdf8" fill-opacity="0.7"/>
+          </g>
+          <g transform="translate(357, 102)">
+            <circle r="20" fill="url(#wheelGrad)" stroke="#64748b" stroke-width="2"/>
+            <g class="wheel-rotator">
+              <circle r="13" fill="none" stroke="#94a3b8" stroke-width="1.3" stroke-dasharray="5 3.1"/>
+              <line x1="-13" y1="0" x2="13" y2="0" stroke="#64748b" stroke-width="1"/>
+              <line x1="0" y1="-13" x2="0" y2="13" stroke="#64748b" stroke-width="1"/>
+            </g>
+            <circle r="4.5" fill="#38bdf8" fill-opacity="0.7"/>
+          </g>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const els = {
+      startSoc: document.getElementById('startSoc'),
+      totalDistance: document.getElementById('totalDistance'),
+      distCity: document.getElementById('distCity'),
+      distHighway: document.getElementById('distHighway'),
+      distMountain: document.getElementById('distMountain'),
+      effTagCity: document.getElementById('effTagCity'),
+      effTagHighway: document.getElementById('effTagHighway'),
+      effTagMountain: document.getElementById('effTagMountain'),
+      boxCity: document.getElementById('boxCity'),
+      boxHighway: document.getElementById('boxHighway'),
+      boxMountain: document.getElementById('boxMountain'),
+      batterySoh: document.getElementById('batterySoh'),
+      batteryCap: document.getElementById('batteryCap'),
+      capDisplay: document.getElementById('capDisplay'),
+      toggleCapBtn: document.getElementById('toggleCapBtn'),
+      capEditor: document.getElementById('capEditor'),
+      roadBtns: document.querySelectorAll('.road-btn'),
+      efficiency: document.getElementById('efficiency'),
+      unit: document.getElementById('unit'),
+      resultCard: document.getElementById('resultCard'),
+      arrivalSocLabel: document.getElementById('arrivalSocLabel'),
+      arrivalSoc: document.getElementById('arrivalSoc'),
+      batteryBar: document.getElementById('batteryBar'),
+      statusMsg: document.getElementById('statusMsg'),
+      usedEnergy: document.getElementById('usedEnergy'),
+      remainingRange: document.getElementById('remainingRange'),
+      batteryCellsGroup: document.getElementById('batteryCellsGroup'),
+      svgEffectiveCap: document.getElementById('svgEffectiveCap'),
+      svgSocText: document.getElementById('svgSocText'),
+      xrayBatteryLabel: document.getElementById('xrayBatteryLabel')
+    };
+
+    // 依實測校準後的各路況相對於「一般道路」能耗倍率
+    const ROAD_MULTIPLIER = {
+      city: 1.00,      // 一般道路 100%
+      highway: 1.08,   // 高速公路 +8% 能耗（校準自實測數據）
+      mountain: 1.22   // 山路爬升 +22% 能耗（校準自實測數據）
+    };
+
+    const DEFAULT_BASE_CAP = 72.5;
+    let currentRoadType = 'highway';
+
+    // 將 focus 跳到「抵達目的地預估剩餘電量」標籤（收起虛擬鍵盤並聚焦結果區）
+    function focusArrivalSocLabel() {
+      if (els.arrivalSocLabel) {
+        els.arrivalSocLabel.focus({ preventScroll: true });
+      }
+    }
+
+    // 依據不同輸入欄位執行對應的平衡與重算邏輯（僅在離開欄位 blur 或按下 Enter 時觸發）
+    function commitFieldChange(input) {
+      const oldVal = input.dataset.oldValue ?? '';
+      const hasNewInput = input.value.trim() !== '';
+
+      // 若使用者離開欄位時沒有輸入任何資料，把舊值重新填入該欄位
+      if (!hasNewInput) {
+        input.value = oldVal;
+      }
+
+      // 離開欄位後清除該欄位的 placeholder
+      input.removeAttribute('placeholder');
+      delete input.dataset.oldValue;
+
+      // 僅在有實際變更值時，執行連動平衡與重新計算
+      if (hasNewInput && input.value !== oldVal) {
+        if (input.id === 'totalDistance') {
+          syncFromTotal();
+        } else if (input.id === 'distCity') {
+          syncFromSplit('city');
+        } else if (input.id === 'distHighway') {
+          syncFromSplit('highway');
+        } else if (input.id === 'distMountain') {
+          syncFromSplit('mountain');
+        }
+
+        // 先執行計算（含上下限正規化與容量顯示更新），再儲存設定
+        calculate();
+        if (['startSoc', 'batterySoh', 'batteryCap', 'efficiency'].includes(input.id)) {
+          saveSettings();
+        }
+      }
+    }
+
+    // 所有數字輸入欄位：
+    // 1. 進入輸入（focus）時，將舊值設為該欄位的 placeholder 並清空輸入框
+    // 2. 按下 Enter 或完成輸入離開欄位時，計算後將 focus 跳到「抵達目的地預估剩餘電量」label
+    function bindInputLifecycle() {
+      const allNumberInputs = document.querySelectorAll('input[type="number"]');
+      allNumberInputs.forEach(input => {
+        input.addEventListener('focus', () => {
+          const oldVal = input.value;
+          input.dataset.oldValue = oldVal;
+          if (oldVal !== '') {
+            input.placeholder = oldVal;
+          }
+          input.value = '';
+        });
+
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            // 先執行 blur（會觸發 commitFieldChange），再把焦點移到剩餘電量 label
+            input.blur();
+            focusArrivalSocLabel();
+          }
+        });
+
+        input.addEventListener('blur', (e) => {
+          commitFieldChange(input);
+          // 若非點擊其他可互動輸入框/按鈕，則將焦點跳至剩餘電量 label
+          const nextTarget = e.relatedTarget;
+          const isInteractiveTarget = nextTarget && (
+            nextTarget.tagName === 'INPUT' ||
+            nextTarget.tagName === 'SELECT' ||
+            nextTarget.tagName === 'BUTTON'
+          );
+          if (!isInteractiveTarget) {
+            focusArrivalSocLabel();
+          }
+        });
+
+        // 輸入健康度或基準可用電量時即時預覽可用 kWh 變化（不干擾目前輸入框內容）
+        if (input.id === 'batterySoh' || input.id === 'batteryCap') {
+          input.addEventListener('input', () => {
+            const val = parseFloat(input.value);
+            if (!isNaN(val) && val > 0) {
+              updateCapDisplay(true);
+            }
+          });
+        }
+      });
+    }
+
+    els.toggleCapBtn.addEventListener('click', () => {
+      els.capEditor.classList.toggle('show');
+    });
+
+    function setActiveRoadButton(roadType) {
+      currentRoadType = roadType;
+      els.roadBtns.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.road === roadType);
+      });
+    }
+
+    // 取得經健康度 (SOH) 折算後的實際可用總電量 (kWh)
+    // isLivePreview=true 時，若當前輸入框暫時清空（focus 狀態），自動讀取 dataset.oldValue 以避免跳回預設值
+    function getEffectiveBatteryCap(isLivePreview = false) {
+      const rawCapStr = (isLivePreview && els.batteryCap.value.trim() === '')
+        ? (els.batteryCap.dataset.oldValue ?? '')
+        : els.batteryCap.value;
+      const rawCap = parseFloat(rawCapStr);
+      const baseCap = (!isNaN(rawCap) && rawCap > 0) ? rawCap : DEFAULT_BASE_CAP;
+
+      const rawSohStr = (isLivePreview && els.batterySoh.value.trim() === '')
+        ? (els.batterySoh.dataset.oldValue ?? '')
+        : els.batterySoh.value;
+      let sohPct = parseFloat(rawSohStr);
+      if (isNaN(sohPct) || sohPct <= 0) sohPct = 100;
+      if (sohPct > 100) sohPct = 100;
+
+      return baseCap * (sohPct / 100);
+    }
+
+    function updateCapDisplay(isLivePreview = false) {
+      const effectiveCap = getEffectiveBatteryCap(isLivePreview);
+      els.capDisplay.textContent = effectiveCap.toFixed(1);
+      els.svgEffectiveCap.textContent = effectiveCap.toFixed(1);
+    }
+
+    // 更新透視車底盤電池組的 10 顆電芯模組顯示（含呼吸動態效果）
+    function updateCarBatteryVisual(arrivalSoc, statusColor) {
+      const clampedSoc = Math.max(0, Math.min(100, arrivalSoc));
+      const totalCells = 10;
+      const startX = 142;
+      const startY = 86;
+      const cellWidth = 15.2;
+      const cellGap = 2.0;
+      const cellHeight = 11;
+
+      let cellsHtml = '';
+      for (let i = 0; i < totalCells; i++) {
+        const cellMin = i * 10;
+        const cellMax = (i + 1) * 10;
+        let fillRatio = 0;
+        if (clampedSoc >= cellMax) {
+          fillRatio = 1;
+        } else if (clampedSoc > cellMin) {
+          fillRatio = (clampedSoc - cellMin) / 10;
+        }
+
+        const x = startX + i * (cellWidth + cellGap);
+        cellsHtml += `<rect x="${x.toFixed(1)}" y="${startY}" width="${cellWidth}" height="${cellHeight}" rx="1.8" fill="#1e293b" stroke="#334155" stroke-width="0.6"/>`;
+        if (fillRatio > 0) {
+          const activeW = Math.max(1.5, cellWidth * fillRatio);
+          const isEdgeCell = fillRatio < 1 || (clampedSoc >= cellMax && clampedSoc < (i + 2) * 10);
+          const animClass = isEdgeCell ? ' class="cell-active-pulse"' : '';
+          cellsHtml += `<rect${animClass} x="${x.toFixed(1)}" y="${startY}" width="${activeW.toFixed(1)}" height="${cellHeight}" rx="1.8" fill="${statusColor}" fill-opacity="0.92"/>`;
+        }
+      }
+
+      els.batteryCellsGroup.innerHTML = cellsHtml;
+      const displayPct = Math.round(arrivalSoc);
+      els.svgSocText.textContent = `${displayPct}%`;
+      els.svgSocText.setAttribute('fill', statusColor);
+      els.xrayBatteryLabel.style.color = statusColor;
+      els.xrayBatteryLabel.textContent = arrivalSoc > 0 ? `抵達剩餘 ${displayPct}%` : '電量耗盡';
+    }
+
+    // 修改「剩餘里程」離開欄位時，自動將差額帶入預設「高速公路」
+    function syncFromTotal() {
+      const rawTotal = els.totalDistance.value.trim();
+      if (rawTotal === '') {
+        els.distHighway.value = '';
+        return;
+      }
+      const total = Math.max(0, parseFloat(rawTotal) || 0);
+      let c = Math.max(0, parseFloat(els.distCity.value) || 0);
+      let m = Math.max(0, parseFloat(els.distMountain.value) || 0);
+
+      if (c + m > total) {
+        c = Math.min(c, total);
+        m = Math.max(0, +(total - c).toFixed(1));
+        if (els.distCity.value.trim() !== '') els.distCity.value = c;
+        if (els.distMountain.value.trim() !== '') els.distMountain.value = m;
+      }
+      els.distHighway.value = +(Math.max(0, total - c - m)).toFixed(1);
+    }
+
+    // 修改各路況里程離開欄位時自動平衡總里程
+    function syncFromSplit(changedType) {
+      const rawTotal = els.totalDistance.value.trim();
+      if (rawTotal === '') return;
+
+      const total = Math.max(0, parseFloat(rawTotal) || 0);
+      let c = Math.max(0, parseFloat(els.distCity.value) || 0);
+      let h = Math.max(0, parseFloat(els.distHighway.value) || 0);
+      let m = Math.max(0, parseFloat(els.distMountain.value) || 0);
+
+      if (changedType === 'city') {
+        if (c > total) { c = total; els.distCity.value = c; }
+        const rem = +(total - c).toFixed(1);
+        if (m > rem) { m = rem; els.distMountain.value = m; }
+        els.distHighway.value = +(Math.max(0, rem - m)).toFixed(1);
+      } else if (changedType === 'mountain') {
+        if (m > total) { m = total; els.distMountain.value = m; }
+        const rem = +(total - m).toFixed(1);
+        if (c > rem) { c = rem; els.distCity.value = c; }
+        els.distHighway.value = +(Math.max(0, rem - c)).toFixed(1);
+      } else if (changedType === 'highway') {
+        if (h > total) { h = total; els.distHighway.value = h; }
+        const rem = +(total - h).toFixed(1);
+        if (m > rem) { m = rem; els.distMountain.value = m; }
+        els.distCity.value = +(Math.max(0, rem - m)).toFixed(1);
+      }
+    }
+
+    function loadSettings() {
+      const savedCap = localStorage.getItem('bz4x_2026_batteryCap_v2');
+      const savedSoh = localStorage.getItem('bz4x_2026_batterySoh');
+      const savedEff = localStorage.getItem('bz4x_2026_efficiency');
+      const savedUnit = localStorage.getItem('bz4x_2026_unit');
+      const savedRoad = localStorage.getItem('bz4x_2026_roadType');
+      els.batteryCap.value = savedCap || DEFAULT_BASE_CAP.toFixed(1);
+      els.batterySoh.value = (savedSoh && savedSoh.trim() !== '') ? savedSoh : '100';
+      if (savedEff) els.efficiency.value = savedEff;
+      if (savedUnit) els.unit.value = savedUnit;
+      if (savedRoad && ROAD_MULTIPLIER[savedRoad]) {
+        setActiveRoadButton(savedRoad);
+      } else {
+        setActiveRoadButton('highway');
+      }
+      updateCapDisplay();
+    }
+
+    function saveSettings() {
+      if (els.batteryCap.value.trim() !== '') {
+        localStorage.setItem('bz4x_2026_batteryCap_v2', els.batteryCap.value);
+      }
+      if (els.batterySoh.value.trim() !== '') {
+        localStorage.setItem('bz4x_2026_batterySoh', els.batterySoh.value);
+      }
+      if (els.efficiency.value.trim() !== '') {
+        localStorage.setItem('bz4x_2026_efficiency', els.efficiency.value);
+      }
+      localStorage.setItem('bz4x_2026_unit', els.unit.value);
+      localStorage.setItem('bz4x_2026_roadType', currentRoadType);
+      updateCapDisplay();
+    }
+
+    // 格式化顯示各路段即時換算後的電耗標籤
+    function formatEffDisplay(kwhPerKm, unit) {
+      if (kwhPerKm <= 0) return '--';
+      if (unit === 'km_kwh') {
+        return `${(1 / kwhPerKm).toFixed(1)} km/kWh`;
+      } else if (unit === 'kwh_100km') {
+        return `${(kwhPerKm * 100).toFixed(1)} kWh/100km`;
+      } else {
+        return `${Math.round(kwhPerKm * 1000)} Wh/km`;
+      }
+    }
+
+    function calculate() {
+      let startSoc = parseFloat(els.startSoc.value);
+      if (isNaN(startSoc)) startSoc = 0;
+      if (startSoc > 100) { startSoc = 100; els.startSoc.value = 100; }
+      if (startSoc < 0) { startSoc = 0; els.startSoc.value = 0; }
+
+      // 正規化健康度 (SOH) 輸入範圍：50% ~ 100%
+      let rawSoh = parseFloat(els.batterySoh.value);
+      if (isNaN(rawSoh) || rawSoh <= 0) {
+        rawSoh = 100;
+        els.batterySoh.value = 100;
+      } else if (rawSoh > 100) {
+        rawSoh = 100;
+        els.batterySoh.value = 100;
+      } else if (rawSoh < 50) {
+        rawSoh = 50;
+        els.batterySoh.value = 50;
+      }
+
+      // 正規化基準可用電量 (kWh) 輸入範圍：10 ~ 150
+      let rawCap = parseFloat(els.batteryCap.value);
+      if (isNaN(rawCap) || rawCap <= 0) {
+        rawCap = DEFAULT_BASE_CAP;
+        els.batteryCap.value = DEFAULT_BASE_CAP.toFixed(1);
+      } else if (rawCap > 150) {
+        rawCap = 150;
+        els.batteryCap.value = 150;
+      } else if (rawCap < 10) {
+        rawCap = 10;
+        els.batteryCap.value = 10;
+      }
+
+      const distCity = parseFloat(els.distCity.value) || 0;
+      const distHighway = parseFloat(els.distHighway.value) || 0;
+      const distMountain = parseFloat(els.distMountain.value) || 0;
+      const totalDist = distCity + distHighway + distMountain;
+
+      // 依電池健康度 (SOH) 與基準可用電量同步計算實際可用容量 (kWh)
+      const batteryCap = rawCap * (rawSoh / 100);
+      els.capDisplay.textContent = batteryCap.toFixed(1);
+      els.svgEffectiveCap.textContent = batteryCap.toFixed(1);
+
+      const rawEff = parseFloat(els.efficiency.value);
+      const effInput = (!isNaN(rawEff) && rawEff > 0) ? rawEff : 0;
+      const unit = els.unit.value;
+
+      let currentRoadKwhPerKm = 0;
+      if (unit === 'km_kwh') {
+        currentRoadKwhPerKm = effInput > 0 ? (1 / effInput) : 0;
+      } else if (unit === 'kwh_100km') {
+        currentRoadKwhPerKm = effInput / 100;
+      } else if (unit === 'wh_km') {
+        currentRoadKwhPerKm = effInput / 1000;
+      }
+
+      const baseCityKwhPerKm = currentRoadKwhPerKm / ROAD_MULTIPLIER[currentRoadType];
+      const cityKwhPerKm = baseCityKwhPerKm * ROAD_MULTIPLIER.city;
+      const highwayKwhPerKm = baseCityKwhPerKm * ROAD_MULTIPLIER.highway;
+      const mountainKwhPerKm = baseCityKwhPerKm * ROAD_MULTIPLIER.mountain;
+
+      els.effTagCity.textContent = formatEffDisplay(cityKwhPerKm, unit);
+      els.effTagHighway.textContent = formatEffDisplay(highwayKwhPerKm, unit);
+      els.effTagMountain.textContent = formatEffDisplay(mountainKwhPerKm, unit);
+
+      const usedKwh = (distCity * cityKwhPerKm) + (distHighway * highwayKwhPerKm) + (distMountain * mountainKwhPerKm);
+      const usedSocPercent = (usedKwh / batteryCap) * 100;
+      const arrivalSoc = startSoc - usedSocPercent;
+
+      const avgKwhPerKm = totalDist > 0 ? (usedKwh / totalDist) : highwayKwhPerKm;
+      const remainingKwh = Math.max(0, (arrivalSoc / 100) * batteryCap);
+      const remainingRange = avgKwhPerKm > 0 ? (remainingKwh / avgKwhPerKm) : 0;
+
+      els.usedEnergy.textContent = `${usedKwh.toFixed(1)} kWh (${usedSocPercent.toFixed(1)}%)`;
+      els.remainingRange.textContent = `${Math.round(remainingRange)} km`;
+
+      const displaySoc = Math.round(arrivalSoc);
+      els.arrivalSoc.textContent = `${displaySoc}%`;
+
+      const barWidth = Math.max(0, Math.min(100, arrivalSoc));
+      els.batteryBar.style.width = `${barWidth}%`;
+
+      let statusHex = '#10b981';
+      if (arrivalSoc >= 25) {
+        statusHex = '#10b981';
+        els.arrivalSoc.style.color = 'var(--success)';
+        els.batteryBar.style.backgroundColor = 'var(--success)';
+        els.statusMsg.style.color = 'var(--success)';
+        els.statusMsg.textContent = '✅ 電量充裕，可直接抵達目的地';
+      } else if (arrivalSoc >= 12) {
+        statusHex = '#f59e0b';
+        els.arrivalSoc.style.color = 'var(--warning)';
+        els.batteryBar.style.backgroundColor = 'var(--warning)';
+        els.statusMsg.style.color = 'var(--warning)';
+        els.statusMsg.textContent = '⚠️ 抵達時電量偏低，建議先規劃 CCS1 快充站';
+      } else if (arrivalSoc > 0) {
+        statusHex = '#ef4444';
+        els.arrivalSoc.style.color = 'var(--danger)';
+        els.batteryBar.style.backgroundColor = 'var(--danger)';
+        els.statusMsg.style.color = 'var(--danger)';
+        els.statusMsg.textContent = '🚨 電量過低（可能限速），務必中途補電';
+      } else {
+        statusHex = '#ef4444';
+        els.arrivalSoc.style.color = 'var(--danger)';
+        els.batteryBar.style.backgroundColor = 'var(--danger)';
+        els.statusMsg.style.color = 'var(--danger)';
+        els.statusMsg.textContent = `❌ 電量不足！中途需補電約 ${Math.abs(usedKwh - (startSoc/100)*batteryCap).toFixed(1)} kWh`;
+      }
+
+      updateCarBatteryVisual(arrivalSoc, statusHex);
+    }
+
+    // 點擊「目前電耗」路況選項按鈕時，自動將電耗數值換算成該路況對應數值
+    els.roadBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const newRoad = btn.dataset.road;
+        if (newRoad === currentRoadType) return;
+
+        const val = parseFloat(els.efficiency.value);
+        const unit = els.unit.value;
+        if (val > 0) {
+          let prevKwhPerKm = 0;
+          if (unit === 'km_kwh') prevKwhPerKm = 1 / val;
+          else if (unit === 'kwh_100km') prevKwhPerKm = val / 100;
+          else if (unit === 'wh_km') prevKwhPerKm = val / 1000;
+
+          const baseCityKwhPerKm = prevKwhPerKm / ROAD_MULTIPLIER[currentRoadType];
+          const newKwhPerKm = baseCityKwhPerKm * ROAD_MULTIPLIER[newRoad];
+
+          if (unit === 'km_kwh') els.efficiency.value = (1 / newKwhPerKm).toFixed(1);
+          else if (unit === 'kwh_100km') els.efficiency.value = (newKwhPerKm * 100).toFixed(1);
+          else if (unit === 'wh_km') els.efficiency.value = Math.round(newKwhPerKm * 1000);
+        }
+
+        setActiveRoadButton(newRoad);
+        saveSettings();
+        calculate();
+        focusArrivalSocLabel();
+      });
+    });
+
+    let prevUnit = els.unit.value;
+    els.unit.addEventListener('focus', () => { prevUnit = els.unit.value; });
+    els.unit.addEventListener('change', () => {
+      const val = parseFloat(els.efficiency.value);
+      const newUnit = els.unit.value;
+      if (val > 0) {
+        let kwhPerKm = 0;
+        if (prevUnit === 'km_kwh') kwhPerKm = 1 / val;
+        else if (prevUnit === 'kwh_100km') kwhPerKm = val / 100;
+        else if (prevUnit === 'wh_km') kwhPerKm = val / 1000;
+
+        if (newUnit === 'km_kwh') els.efficiency.value = (1 / kwhPerKm).toFixed(1);
+        else if (newUnit === 'kwh_100km') els.efficiency.value = (kwhPerKm * 100).toFixed(1);
+        else if (newUnit === 'wh_km') els.efficiency.value = Math.round(kwhPerKm * 1000);
+      }
+      prevUnit = newUnit;
+      saveSettings();
+      calculate();
+      focusArrivalSocLabel();
+    });
+
+    bindInputLifecycle();
+    loadSettings();
+    prevUnit = els.unit.value;
+    calculate();
+  </script>
+</body>
+</html>
