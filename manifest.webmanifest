@@ -4,7 +4,7 @@
   "short_name": "bZ4X 電量",
   "description": "預估 Toyota bZ4X 行程抵達電量與續航。",
   "lang": "zh-TW",
-  "start_url": "./?v=2",
+  "start_url": "./?v=0.03",
   "scope": "./",
   "display": "standalone",
   "background_color": "#0b1120",
