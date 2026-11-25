@@ -98,23 +98,6 @@
       height: 20px;
     }
 
-    .badge {
-      background: rgba(14, 165, 233, 0.18);
-      color: var(--primary);
-      border: 1px solid rgba(14, 165, 233, 0.35);
-      font-size: 0.68rem;
-      font-weight: 700;
-      padding: 2px 6px;
-      border-radius: 6px;
-      flex-shrink: 0;
-    }
-
-    header h1 {
-      font-size: 0.96rem;
-      font-weight: 700;
-      white-space: nowrap;
-    }
-
     .header-controls {
       display: flex;
       align-items: center;
@@ -157,6 +140,7 @@
       display: flex;
       align-items: center;
       gap: 2px;
+      min-height: 38px;
       font-size: 0.7rem;
       color: var(--text-muted);
       background: var(--card);
@@ -201,6 +185,9 @@
     }
 
     .cap-tag {
+      display: flex;
+      align-items: center;
+      min-height: 38px;
       font-size: 0.7rem;
       color: var(--text-muted);
       background: var(--card);
@@ -733,8 +720,6 @@
             <path d="m12.8 7.8-4 4.7h3l-.7 3.7 4.1-5h-3.1l.7-3.4Z" fill="currentColor"/>
           </svg>
         </span>
-        <span class="badge">2026 bZ4X</span>
-        <h1>抵達電量預估</h1>
       </div>
       <div class="header-controls">
         <label class="soh-tag" title="輸入電池健康度 (SOH %)">
@@ -760,7 +745,7 @@
     <!-- 預估結果卡片（設定 tabindex="-1" 使每個欄位輸入完後可將 focus 跳到此區域/剩餘電量標籤） -->
     <div class="result-card" id="resultCard" tabindex="-1">
       <div class="result-top">
-        <span class="result-label" id="arrivalSocLabel" tabindex="-1">抵達目的地預估剩餘電量</span>
+        <span class="result-label" id="arrivalSocLabel" tabindex="-1">抵達目的地預估電量</span>
         <span class="result-soc" id="arrivalSoc">--%</span>
       </div>
       <div class="battery-bar-bg">
@@ -811,7 +796,7 @@
       <div class="top-two-col">
         <div class="form-group">
           <div class="label-row">
-            <span>出發時電量 (SOC)</span>
+            <span>目前電量 (%)</span>
           </div>
           <div class="input-with-suffix">
             <input type="number" id="startSoc" value="80" min="1" max="100" step="1" inputmode="numeric">
@@ -1074,7 +1059,7 @@
     const DEFAULT_BASE_CAP = 74.7;
     let currentRoadType = 'city';
 
-    // 將 focus 跳到「抵達目的地預估剩餘電量」標籤（收起虛擬鍵盤並聚焦結果區）
+    // 將 focus 跳到「抵達目的地預估電量」標籤（收起虛擬鍵盤並聚焦結果區）
     function focusArrivalSocLabel() {
       if (els.arrivalSocLabel) {
         els.arrivalSocLabel.focus({ preventScroll: true });
@@ -1204,6 +1189,7 @@
 
         input.addEventListener('blur', (e) => {
           commitFieldChange(input);
+          saveInputValues();
           // 若非點擊其他可互動輸入框/按鈕，則將焦點跳至剩餘電量 label
           const nextTarget = e.relatedTarget;
           const isInteractiveTarget = nextTarget && (
@@ -1215,6 +1201,8 @@
             focusArrivalSocLabel();
           }
         });
+
+        input.addEventListener('input', saveInputValues);
 
         // 輸入健康度或基準可用電量時即時預覽可用 kWh 變化（不干擾目前輸入框內容）
         if (input.id === 'batterySoh' || input.id === 'batteryCap') {
@@ -1357,6 +1345,52 @@
       }
     }
 
+    const INPUTS_COOKIE_NAME = 'bz4x_last_inputs';
+
+    function saveInputValues() {
+      const values = {};
+      document.querySelectorAll('input[type="number"]').forEach(input => {
+        values[input.id] = input.value;
+      });
+      values.unit = els.unit.value;
+      values.roadType = currentRoadType;
+
+      const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+      document.cookie = `${INPUTS_COOKIE_NAME}=${encodeURIComponent(JSON.stringify(values))}; max-age=31536000; path=/; SameSite=Lax${secure}`;
+    }
+
+    function loadInputValues() {
+      const cookie = document.cookie.split('; ').find(value =>
+        value.startsWith(`${INPUTS_COOKIE_NAME}=`)
+      );
+      if (!cookie) return;
+
+      let values;
+      try {
+        values = JSON.parse(decodeURIComponent(cookie.slice(INPUTS_COOKIE_NAME.length + 1)));
+      } catch (error) {
+        console.error('無法讀取上次輸入的資料：', error);
+        return;
+      }
+      if (!values || typeof values !== 'object') return;
+
+      document.querySelectorAll('input[type="number"]').forEach(input => {
+        if (typeof values[input.id] === 'string') {
+          input.value = values[input.id];
+        }
+      });
+      if (Array.from(els.unit.options).some(option => option.value === values.unit)) {
+        els.unit.value = values.unit;
+      }
+      if (ROAD_TYPES.includes(values.roadType)) {
+        setActiveRoadButton(values.roadType);
+      }
+      ROAD_TYPES.forEach(road => {
+        const value = parseFloat(efficiencyProfileInputs[road].value);
+        efficiencyProfiles[road] = Number.isFinite(value) && value > 0 ? value : null;
+      });
+    }
+
     function loadSettings() {
       const savedCap = localStorage.getItem('bz4x_2026_batteryCap_v2');
       const savedSoh = localStorage.getItem('bz4x_2026_batterySoh');
@@ -1395,6 +1429,7 @@
       els.efficiency.value = Number.isFinite(currentProfile) && currentProfile > 0
         ? kwhPerKmToEfficiency(1 / currentProfile, els.unit.value)
         : (savedEff || '');
+      loadInputValues();
       updateCapDisplay();
     }
 
@@ -1551,6 +1586,7 @@
           els.efficiency.value = kwhPerKmToEfficiency(1 / profile, els.unit.value);
         }
         saveSettings();
+        saveInputValues();
         calculate();
         focusArrivalSocLabel();
       });
@@ -1567,6 +1603,7 @@
       }
       prevUnit = newUnit;
       saveSettings();
+      saveInputValues();
       calculate();
       focusArrivalSocLabel();
     });

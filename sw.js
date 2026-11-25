@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bz4x-pwa-v1';
+const CACHE_NAME = 'bz4x-pwa-v2';
 const APP_FILES = [
   './',
   './index.html',
