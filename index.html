@@ -735,7 +735,7 @@
 
     <!-- 隱藏式可用電量微調列 -->
     <div class="cap-editor" id="capEditor">
-      <span>新車(100% SOH)可用基準 (總74.7)：</span>
+      <span>新車可用基準：</span>
       <div style="display:flex;align-items:center;gap:4px;">
         <input type="number" id="batteryCap" value="74.7" min="10" max="150" step="0.1" inputmode="decimal">
         <span>kWh</span>
@@ -815,15 +815,11 @@
         </div>
       </div>
 
-      <!-- 目前電耗：選項按鈕（一般道路 / 高速公路 / 山路爬升） + 輸入框 -->
+      <!-- 目前電耗：選擇路況並輸入 km/kWh -->
       <div class="form-group">
         <div class="label-row">
           <span>目前電耗</span>
-          <select id="unit">
-            <option value="km_kwh" selected>km/kWh</option>
-            <option value="kwh_100km">kWh/100km</option>
-            <option value="wh_km">Wh/km</option>
-          </select>
+          <span>km/kWh</span>
         </div>
         <div class="eff-control-row">
           <div class="road-btn-group" id="roadBtnGroup">
@@ -869,7 +865,7 @@
     <!-- 底部透視 2026 Toyota bZ4X 與底盤電池組視覺化（含動態效果） -->
     <div class="xray-car-card">
       <div class="xray-header">
-        <span class="xray-title"><span class="xray-dot"></span>2026 bZ4X e-TNGA 底盤電池透視</span>
+        <span class="xray-title"><span class="xray-dot"></span>底盤電池透視</span>
         <span id="xrayBatteryLabel" style="font-weight:700;color:#10b981;">抵達預估電量</span>
       </div>
       <div class="xray-svg-wrap">
@@ -1030,7 +1026,6 @@
       personalEffMountain: document.getElementById('personalEffMountain'),
       personalEfficiencySettings: document.getElementById('personalEfficiencySettings'),
       togglePersonalEfficiencyBtn: document.getElementById('togglePersonalEfficiencyBtn'),
-      unit: document.getElementById('unit'),
       resultCard: document.getElementById('resultCard'),
       arrivalSocLabel: document.getElementById('arrivalSocLabel'),
       arrivalSoc: document.getElementById('arrivalSoc'),
@@ -1073,11 +1068,9 @@
       return value / 1000;
     }
 
-    function kwhPerKmToEfficiency(value, unit) {
+    function kwhPerKmToEfficiency(value) {
       if (!Number.isFinite(value) || value <= 0) return '';
-      if (unit === 'km_kwh') return (1 / value).toFixed(1);
-      if (unit === 'kwh_100km') return (value * 100).toFixed(1);
-      return Math.round(value * 1000);
+      return (1 / value).toFixed(1);
     }
 
     function syncPersonalEfficiencyInputs() {
@@ -1090,7 +1083,7 @@
 
     function updateCurrentProfileFromInput() {
       const value = parseFloat(els.efficiency.value);
-      const kwhPerKm = efficiencyToKwhPerKm(value, els.unit.value);
+      const kwhPerKm = efficiencyToKwhPerKm(value, 'km_kwh');
       if (kwhPerKm <= 0) return;
       efficiencyProfiles[currentRoadType] = 1 / kwhPerKm;
       syncPersonalEfficiencyInputs();
@@ -1114,7 +1107,7 @@
         const value = parseFloat(input.value);
         efficiencyProfiles[road] = Number.isFinite(value) && value > 0 ? value : null;
         if (road === currentRoadType && efficiencyProfiles[road]) {
-          els.efficiency.value = kwhPerKmToEfficiency(1 / efficiencyProfiles[road], els.unit.value);
+          els.efficiency.value = kwhPerKmToEfficiency(1 / efficiencyProfiles[road]);
         }
         syncPersonalEfficiencyInputs();
         calculate();
@@ -1352,7 +1345,6 @@
       document.querySelectorAll('input[type="number"]').forEach(input => {
         values[input.id] = input.value;
       });
-      values.unit = els.unit.value;
       values.roadType = currentRoadType;
 
       const secure = window.location.protocol === 'https:' ? '; Secure' : '';
@@ -1374,14 +1366,15 @@
       }
       if (!values || typeof values !== 'object') return;
 
+      if (values.unit && values.unit !== 'km_kwh' && typeof values.efficiency === 'string') {
+        const kwhPerKm = efficiencyToKwhPerKm(parseFloat(values.efficiency), values.unit);
+        if (kwhPerKm > 0) values.efficiency = kwhPerKmToEfficiency(kwhPerKm);
+      }
       document.querySelectorAll('input[type="number"]').forEach(input => {
         if (typeof values[input.id] === 'string') {
           input.value = values[input.id];
         }
       });
-      if (Array.from(els.unit.options).some(option => option.value === values.unit)) {
-        els.unit.value = values.unit;
-      }
       if (ROAD_TYPES.includes(values.roadType)) {
         setActiveRoadButton(values.roadType);
       }
@@ -1395,7 +1388,7 @@
       const savedCap = localStorage.getItem('bz4x_2026_batteryCap_v2');
       const savedSoh = localStorage.getItem('bz4x_2026_batterySoh');
       const savedEff = localStorage.getItem('bz4x_2026_efficiency');
-      const savedUnit = localStorage.getItem('bz4x_2026_unit');
+      const savedUnit = localStorage.getItem('bz4x_2026_unit') || 'km_kwh';
       const savedRoad = localStorage.getItem('bz4x_2026_roadType');
       const hasSavedEfficiencyProfiles = ROAD_TYPES.some(road =>
         localStorage.getItem(`bz4x_2026_efficiency_${road}_km_kwh`) !== null
@@ -1406,7 +1399,6 @@
         ? savedCap
         : DEFAULT_BASE_CAP.toFixed(1);
       els.batterySoh.value = (savedSoh && savedSoh.trim() !== '') ? savedSoh : '100';
-      if (savedUnit) els.unit.value = savedUnit;
 
       ROAD_TYPES.forEach(road => {
         const savedProfile = localStorage.getItem(`bz4x_2026_efficiency_${road}_km_kwh`);
@@ -1419,7 +1411,7 @@
       });
 
       if (!hasSavedEfficiencyProfiles && savedEff && !(savedEff === '6.0' && currentRoadType === 'city')) {
-        const savedKwhPerKm = efficiencyToKwhPerKm(parseFloat(savedEff), els.unit.value);
+        const savedKwhPerKm = efficiencyToKwhPerKm(parseFloat(savedEff), savedUnit);
         if (savedKwhPerKm > 0) efficiencyProfiles[currentRoadType] = 1 / savedKwhPerKm;
       }
 
@@ -1427,7 +1419,7 @@
       syncPersonalEfficiencyInputs();
       const currentProfile = efficiencyProfiles[currentRoadType];
       els.efficiency.value = Number.isFinite(currentProfile) && currentProfile > 0
-        ? kwhPerKmToEfficiency(1 / currentProfile, els.unit.value)
+        ? kwhPerKmToEfficiency(1 / currentProfile)
         : (savedEff || '');
       loadInputValues();
       updateCapDisplay();
@@ -1450,21 +1442,14 @@
           Number.isFinite(value) && value > 0 ? String(value) : ''
         );
       });
-      localStorage.setItem('bz4x_2026_unit', els.unit.value);
       localStorage.setItem('bz4x_2026_roadType', currentRoadType);
       updateCapDisplay();
     }
 
     // 格式化顯示各路段即時換算後的電耗標籤
-    function formatEffDisplay(kwhPerKm, unit) {
+    function formatEffDisplay(kwhPerKm) {
       if (kwhPerKm <= 0) return '--';
-      if (unit === 'km_kwh') {
-        return `${(1 / kwhPerKm).toFixed(1)} km/kWh`;
-      } else if (unit === 'kwh_100km') {
-        return `${(kwhPerKm * 100).toFixed(1)} kWh/100km`;
-      } else {
-        return `${Math.round(kwhPerKm * 1000)} Wh/km`;
-      }
+      return `${(1 / kwhPerKm).toFixed(1)} km/kWh`;
     }
 
     function calculate() {
@@ -1511,8 +1496,7 @@
 
       const rawEff = parseFloat(els.efficiency.value);
       const effInput = (!isNaN(rawEff) && rawEff > 0) ? rawEff : 0;
-      const unit = els.unit.value;
-      const currentRoadKwhPerKm = efficiencyToKwhPerKm(effInput, unit);
+      const currentRoadKwhPerKm = efficiencyToKwhPerKm(effInput, 'km_kwh');
       const roadKwhPerKm = road => {
         const profile = efficiencyProfiles[road];
         return Number.isFinite(profile) && profile > 0
@@ -1523,9 +1507,9 @@
       const highwayKwhPerKm = roadKwhPerKm('highway');
       const mountainKwhPerKm = roadKwhPerKm('mountain');
 
-      els.effTagCity.textContent = formatEffDisplay(cityKwhPerKm, unit);
-      els.effTagHighway.textContent = formatEffDisplay(highwayKwhPerKm, unit);
-      els.effTagMountain.textContent = formatEffDisplay(mountainKwhPerKm, unit);
+      els.effTagCity.textContent = formatEffDisplay(cityKwhPerKm);
+      els.effTagHighway.textContent = formatEffDisplay(highwayKwhPerKm);
+      els.effTagMountain.textContent = formatEffDisplay(mountainKwhPerKm);
 
       const usedKwh = (distCity * cityKwhPerKm) + (distHighway * highwayKwhPerKm) + (distMountain * mountainKwhPerKm);
       const usedSocPercent = (usedKwh / batteryCap) * 100;
@@ -1583,7 +1567,7 @@
         setActiveRoadButton(newRoad);
         const profile = efficiencyProfiles[newRoad];
         if (Number.isFinite(profile) && profile > 0) {
-          els.efficiency.value = kwhPerKmToEfficiency(1 / profile, els.unit.value);
+          els.efficiency.value = kwhPerKmToEfficiency(1 / profile);
         }
         saveSettings();
         saveInputValues();
@@ -1592,25 +1576,8 @@
       });
     });
 
-    let prevUnit = els.unit.value;
-    els.unit.addEventListener('focus', () => { prevUnit = els.unit.value; });
-    els.unit.addEventListener('change', () => {
-      const val = parseFloat(els.efficiency.value);
-      const newUnit = els.unit.value;
-      if (val > 0) {
-        const kwhPerKm = efficiencyToKwhPerKm(val, prevUnit);
-        els.efficiency.value = kwhPerKmToEfficiency(kwhPerKm, newUnit);
-      }
-      prevUnit = newUnit;
-      saveSettings();
-      saveInputValues();
-      calculate();
-      focusArrivalSocLabel();
-    });
-
     bindInputLifecycle();
     loadSettings();
-    prevUnit = els.unit.value;
     calculate();
 
     let installPromptEvent;
